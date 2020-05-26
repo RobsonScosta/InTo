@@ -42,153 +42,55 @@ emoColors <- c("anger" = "#fe0000", "anticipation" = "#fea853", "disgust" = "#ff
                "fear" = "#009600", "joy" = "#ffff54", "sadness" = "#5151ff", 
                "surprise" = "#5abdff", "trust" = "#52ff4f")
 
-# Import Data
-# bangkok <- read_twitter_csv("./data/tweet_original_Bangkok_0507.csv")
- delhi <- read_twitter_csv("./data/tweet_Delhi.csv")
-# jakarta <- read_twitter_csv("./data/tweet_original_Jakarta_0507.csv")
-# mumbai <- read_twitter_csv("./data/tweet_original_Mumbai_0507.csv")
-# 
-# ## India covid data
-# india_cases <- read.csv("./data/complete.csv")
-# india_hosp <- read.csv("./data/patients_data.csv")
+# kriging data
+krigingDel_case <- read.csv("./data/Delhi_kriging_data_case.csv")
+krigingDel_hosp <- read.csv("./data/Delhi_kriging_data_hosp.csv")
 
-# Function to get cases data
-get_cases_data <- function(loc){
+krigingBan_case <- read.csv("./data/Bangkok_kriging_data_case.csv")
+krigingBan_hosp <- read.csv("./data/Bangkok_kriging_data_hosp.csv")
 
-  if(loc %in% c("New Delhi", "Mumbai")){
+krigingJak_case <- read.csv("./data/Jakarta_kriging_data_case.csv")
+krigingJak_hosp <- read.csv("./data/Jakarta_kriging_data_hosp.csv")
 
-    india_cases %>%
-      filter(`Name.of.State...UT` == "Delhi") %>%
-      mutate(Date = as.Date(Date)) %>%
-      arrange(Date) %>%
-      mutate(newCases = Total.Confirmed.cases - lag(Total.Confirmed.cases)) %>%
-      select(Date, Total.Confirmed.cases, newCases) %>%
-      pivot_longer(cols = c(Total.Confirmed.cases, newCases)) %>%
-      filter(name == "newCases")
+krigingMum_case <- read.csv("./data/Mumbai_kriging_data_case.csv")
+krigingMum_hosp <- read.csv("./data/Mumbai_kriging_data_hosp.csv")
 
-  }
+# epi time series data
+epi_data_bang <- read.csv("./data/epi_data_bangkok.csv") 
+epi_data_delhi <- read.csv("./data/epi_data_new delhi.csv")
+epi_data_mumbai <- read.csv("./data/epi_data_mumbai.csv")
+epi_data_jakarta <- read.csv("./data/epi_data_jakarta.csv")
 
-}
+# predictability
 
-# Function to get hospitalization data
-get_hosp_data <- function(loc){
+gaps_delhi <- read.csv("./data/Delhi-pre-obs-gap.csv")%>%
+  left_join(read.csv("./data/indicator-Delhi.csv")) %>%
+  mutate(hosp_risk = lag(order_by(week_no, diff(daily_hosp_week)/daily_hosp_week)),
+         case_risk = lag(order_by(week_no, diff(daily_case_week)/daily_case_week)),
+         case_pred = lag(order_by(week_no, diff(te_stm_case)/te_stm_case)),
+         hosp_pred = lag(order_by(week_no, diff(te_stm_hosp)/te_stm_hosp)))
 
-  if(loc == "New Delhi"){
+gaps_mum <- read.csv("./data/Mumbai-pre-obs-gap.csv")%>%
+  left_join(read.csv("./data/indicator-Mumbai.csv")) %>%
+  mutate(hosp_risk = lag(order_by(week_no, diff(daily_hosp_week)/daily_hosp_week)),
+         case_risk = lag(order_by(week_no, diff(daily_case_week)/daily_case_week)),
+         case_pred = lag(order_by(week_no, diff(te_stm_case)/te_stm_case)),
+         hosp_pred = lag(order_by(week_no, diff(te_stm_hosp)/te_stm_hosp)))
 
-    india_hosp %>%
-      filter(state_code == "DL", current_status == "Hospitalized") %>%
-      group_by(date_announced) %>%
-      count() %>%
-      ungroup() %>%
-      mutate(Date = dmy(date_announced))
+gaps_bang <- read.csv("./data/Bangkok-pre-obs-gap.csv")%>%
+  left_join(read.csv("./data/indicator-Bangkok.csv")) %>%
+  mutate(hosp_risk = lag(order_by(week_no, diff(daily_hosp_week)/daily_hosp_week)),
+         case_risk = lag(order_by(week_no, diff(daily_case_week)/daily_case_week)),
+         case_pred = lag(order_by(week_no, diff(te_stm_case)/te_stm_case)),
+         hosp_pred = lag(order_by(week_no, diff(te_stm_hosp)/te_stm_hosp)))
 
-  }
+gaps_jak <- read.csv("./data/Jakarta-pre-obs-gap.csv")%>%
+  left_join(read.csv("./data/indicator-Jakarta.csv")) %>%
+  mutate(hosp_risk = lag(order_by(week_no, diff(daily_hosp_week)/daily_hosp_week)),
+         case_risk = lag(order_by(week_no, diff(daily_case_week)/daily_case_week)),
+         case_pred = lag(order_by(week_no, diff(te_stm_case)/te_stm_case)),
+         hosp_pred = lag(order_by(week_no, diff(te_stm_hosp)/te_stm_hosp)))
 
-}
-
-# Function to get tweet coordinates and sentiment
-get_tweet_coords <- function(loc){
-
-  loc %>%
-    select(user_id, status_id, created_at, text, coords_coords) %>%
-    tidyr::separate(col = "coords_coords", into = c("lng", "lat"), sep = " ") %>%
-    # replace abbreviations and contractions
-    mutate(text = replace_abbreviation(text) %>% # replace abbreviation
-             replace_contraction()) %>%
-    # tokenize, ie. separate a tweet text into its constituent elements
-    unnest_tokens("word", "text", token = "tweets",
-                  strip_punct = T, strip_url = T) %>%
-    # determine sentiments of words
-    inner_join(labMT) %>%
-    # remove values in between 4 and 6
-    filter(!(4 < happiness_average & happiness_average < 6)) %>%
-    ## count the number of positive and negative words per status per user
-    group_by(user_id, status_id, "lat" = as.numeric(lat), "lng" = as.numeric(lng),
-             "day_created" = strftime(created_at, format = "%Y-%m-%d")) %>%
-    summarise(Sent = mean(happiness_average, na.rm = T)) %>%
-    ungroup() %>%
-    group_by(day_created) %>%
-    mutate(nTweets = n_distinct(status_id)) %>%
-    ungroup() %>%
-    filter(day_created >= input$dates[1], day_created <= input$dates[2])
-
-}
-
-# Function to get top bi-grams
-get_bigrams <- function(loc){
-
-  loc %>%
-    filter(created_at >= input$dates[1], created_at <= input$dates[2]) %>%
-    # top_frac(n = .2, wt = retweet_count) %>%
-    mutate(text = rm_twitter_url(text) %>%
-             rm_number()) %>%
-    unnest_tokens("word", "text", token = "ngrams", n = 2) %>%
-    separate(col = word, into = c("word1", "word2"), sep = " ") %>%
-    filter(!(word1 %in% c(stop_words$word, "coronavirus", "covid19",
-                          "#covid19", "#coronavirus", "#covid2019", "amp", "covid", "-", "|", "19"))) %>%
-    filter(!(word2 %in% c(stop_words$word, "coronavirus", "covid19",
-                          "#covid19", "#coronavirus", "#covid2019", "amp", "covid", "-", "|", "19"))) %>%
-    unite(col = "pairs", c(word1, word2), sep = " ")  %>%
-    group_by(pairs) %>%
-    count() %>%
-    ungroup() %>%
-    # change n to whatever number required
-    top_n(n = 10, wt = n) 
-
-}
-
-# Function to measure emotional content of top tweets
-get_emotions <- function(loc){
-  
-  loc %>%
-    filter(created_at >= input$dates[1], created_at <= input$dates[2]) %>%
-    top_frac(n = .2, wt = retweet_count) %>%
-    mutate(text = rm_twitter_url(text) %>%
-           rm_number()) %>%
-    unnest_tokens("pairs", "text", token = "ngrams", n = 2) %>%
-    separate(pairs, c("word1", "word2")) %>%
-    pivot_longer(c(word1, word2), names_to = "wordNum", values_to = "word") %>%
-    inner_join(get_sentiments("nrc")) %>%
-    filter(!(sentiment %in% c("positive", "negative"))) %>%
-    group_by(sentiment) %>%
-    count() %>%
-    ungroup() 
-  
-}
-
-
-# kriging
-# get_krigin <- function(loc, coords){
-#   
-#   loc_coords <- lookup_coords(loc)
-#   
-#   p <- list(data.frame("x" = c(loc_coords[[2]][1], loc_coords[[2]][3]),
-#                      "y" = c(loc_coords[[2]][2], loc_coords[[2]][4])))
-#   
-#   randomPoints <- data.frame("lng" = c(runif(10000, min = min(p[[1]][,1]), max = max(p[[1]][,1]))),
-#                            "lat" = c(runif(10000, min = min(p[[1]][,2]), max = max(p[[1]][,2]))))
-#   
-#   coords <- dplyr::filter(coords, !is.na(lng))
-#   
-#   coordinates(coords) <- ~lng+lat
-#   
-#   coordinates(randomPoints) <- ~lng+lat
-# 
-#   lzn.kriged <- autoKrige(formula = Sent ~ 1, coords, randomPoints)
-# 
-#   # lzn.kriged.dataframe <- as.data.frame(lzn.kriged$krige_output) %>%
-#   # rename("Sent" = var1.pred)
-#   # 
-#   # coordinates(lzn.kriged.dataframe) <- ~lng+lat
-#   # 
-#   # lzn.kriged <- autoKrige(formula = n ~ log(Sent), input_data = coords,
-#   #                       lzn.kriged.dataframe, model = "Sph")
-#   # 
-#   # lzn.kriged.dataframe.final <- as.data.frame(lzn.kriged$krige_output)
-# 
-#   return(lzn.kriged)
-# 
-# }
 
 # tweetCoord_Bangkok <- get_tweet_coords(bangkok)
 # write.csv(tweetCoord_Bangkok, "tweetCoord_Bangkok.csv")
@@ -238,30 +140,8 @@ tweetEmo_Jak <-  read.csv("./data/tweetEmo_Jak.csv")
 # write.csv(tweetEmo_Mum, "tweetEmo_Mum.csv")
 tweetEmo_Mum <-  read.csv("./data/tweetEmo_Mum.csv")
 
-# covidCases_Del <- get_cases_data("New Delhi")
-# write.csv(covidCases_Del, "covidCases_Del.csv")
-covidCases_Del <- read.csv("./data/covidCases_Del.csv") %>%
-  mutate(Date = as.Date( strftime(Date, format = "%Y-%m-%d")))
-
-# covidHosp_Del <- get_hosp_data("New Delhi")
-# write.csv(covidHosp_Del, "covidHosp_Del.csv")
-covidHosp_Del <- read.csv("./data/covidHosp_Del.csv") %>%
-  mutate(Date = as.Date( strftime(Date, format = "%Y-%m-%d")))
-
-# kriging data
-kriging_Del <- read.csv("./data/kriging_Del.csv")
-
 assocVals_Del <- read.csv("./data/assocVals_Del.csv")
 
 tweetEmotions_del <- read.csv("./data/tweetEmotions_Ndel.csv")
 
 topTweets <- read.csv("./data/topTweets.csv")
-
-# helper function for making checkbox
-shinyInput = function(FUN, len, id, ...) { 
-  inputs = character(len) 
-  for (i in seq_len(len)) { 
-    inputs[i] = as.character(FUN(paste0(id, i), label = NULL, ...)) 
-  } 
-  inputs 
-} 

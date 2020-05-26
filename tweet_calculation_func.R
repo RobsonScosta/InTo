@@ -74,12 +74,12 @@ stm_labMT_daily_func_elroy <- function(tweet){
     inner_join(labMT) %>%
     # remove values in between 4 and 6 
     filter(!(4 < happiness_average & happiness_average < 6)) %>%
+    mutate("day_created" = strftime(created_at, format = "%Y-%m-%d")) %>%
     ## count the number of positive and negative words per status per user
-    group_by(user_id, status_id, coords_coords, 
-             "day_created" = strftime(created_at, format = "%Y-%m-%d")) %>%
+    group_by(user_id, status_id, coords_coords,day_created) %>%
     summarise(Sent = mean(happiness_average, na.rm = T)) %>%
     ungroup() %>%
-    separate(col = "coords_coords", into = c("lng", "lat"), sep = " ") %>%
+    separate(col = `coords_coords`, into = c("lng", "lat"), sep = " ") %>%
     mutate(lng = as.numeric(lng),
            lat = as.numeric(lat),
            day_created = as.Date(day_created)) 
@@ -89,7 +89,7 @@ stm_labMT_daily_func_elroy <- function(tweet){
 
 
 csv_epi_india_func <- function(city){
-  india_cases <- read.csv("india_complete.csv") %>%
+  india_cases <- read.csv("./data/complete.csv") %>%
     filter(`Name.of.State...UT` == city) %>%    #  Delhi --> Delhi; Membai --> Maharashtra
     mutate(Date = as.Date(Date)) %>%
     arrange(Date) %>%

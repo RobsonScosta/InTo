@@ -1,9 +1,12 @@
 library(rtweet)
-library(tidyverse)
+library(dplyr)
+library(readr)
+library(purrr)
+library(ggplot2)
+library(rlang)
 library(qdap)
 library(tidytext)
 library(tidyr)
-library(plyr)
 library(sp)
 library(automap)
 library(ggmap)
@@ -15,7 +18,7 @@ ggmap_key <- "AIzaSyB055tAEERlsleH1Xf83-JqAa530V7roTk"
 register_google(key = ggmap_key, write = TRUE)
 
 # name of Location
-loc = "jakarta"
+loc = "bangkok"
 
 locCode = ifelse(loc == "delhi",
                  "DL",
@@ -63,8 +66,6 @@ tweet_stm <- unnest_tweet %>%
   mutate(lng = as.numeric(lng),
          lat = as.numeric(lat),
          day_created = as.Date(day_created)) 
-
-
 
 mean_stm_daily <- tweet_sentiment %>%
   mutate(tweetDate = as.Date( strftime(day_created, format = "%Y-%m-%d"))) %>%
@@ -130,6 +131,8 @@ if (loc == "delhi"){
     filter(recordDate <= as.Date("2020-04-18")+length(daily_case)-1)
 }
 epi_data <- data.frame(recordDate,daily_case,hospital)
+
+write.csv(epi_data, paste0("./data/epi_data_",loc,".csv" ))
 ##---- end ----
 
 ##---- 3. Added by Jie on May 20, index calculation ----

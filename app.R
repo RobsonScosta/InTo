@@ -19,14 +19,10 @@ ui <- navbarPage( "InTo", theme = shinytheme("united"),
                                          width = 300, height = 850, fixed=TRUE, draggable = TRUE,
                                          
                                          selectInput(inputId = "city", label = "Choose a Location", 
-                                                     choices = c( "New Delhi" # ,
-                                                                  # "Bangkok", "Jakarta", "Mumbai"
+                                                     choices = c( "New Delhi",
+                                                                  "Bangkok", "Jakarta", "Mumbai"
                                                      ), 
                                                      selected = "New Delhi"),
-                                         br() ,
-                                         dateRangeInput(inputId = "dates", label = "Select a Date Range",
-                                                        min = "2020-01-01", max = "2020-12-31",
-                                                        start = "2020-04-01", end = "2020-04-30"),
                                          br(),
                                          actionButton("display", "Select"),
                                          br(),
@@ -48,7 +44,11 @@ ui <- navbarPage( "InTo", theme = shinytheme("united"),
                            fluidRow(
                              
                              column(width = 6, 
-                                    plotOutput("top_bigrams") %>% withSpinner())
+                                    plotOutput("top_bigrams") %>% withSpinner()),
+                             column(width = 4,
+                                    dateRangeInput(inputId = "topTweet_dates", label = "Select a Date Range",
+                                                   min = "2020-01-01", max = "2020-12-31",
+                                                   start = "2020-04-01", end = "2020-04-30"))
                            ),
                            fluidRow(
                              h3("Tweet Emotions over Time"),
@@ -69,12 +69,7 @@ ui <- navbarPage( "InTo", theme = shinytheme("united"),
                                   h4("Selected Misinformation"),
                                   DT::dataTableOutput("misinform_selected"),
                                   actionButton("email", "Send")
-                                  # a(actionButton(inputId = "email1", label = "Send", 
-                                  #                icon = icon("envelope", lib = "font-awesome")),
-                                  #   href="mailto:elroy.galbraith@gmail.com?
-                                  #   &subject='Misinforming Tweets'
-                                  #   &body='Attached is a list of misinforming tweets'
-                                  #   &attachment='./data/misinformation.csv'")
+                                  
                                   )
                            ),
                   
@@ -82,7 +77,7 @@ ui <- navbarPage( "InTo", theme = shinytheme("united"),
                   
                   tabPanel(title = "About",
                            
-                           h3("What are you InTo?"),
+                           h3(strong("What are you InTo?")),
                            p("The Covid 19 pandemic provides a unique opportunity to investigate the relationship between
                            social chatter and health-seeking behaviour. We here at the Nexus Lab believe that the sentiments 
                            in the words we use can help public health officials forecast the expected demand on hospital resources.
@@ -92,15 +87,75 @@ ui <- navbarPage( "InTo", theme = shinytheme("united"),
                              called InTo."),
                            br(),
                            
-                           p("We conduct sentiment analysis on tweets about covid 19 in specific cities. 
-                             Then we compared how the words used and sentiments expressed changed over time simultaneously with the
-                             incidence of the disease and the rate of hospitalization in that area. The statistical relationship between
-                             these variables are then used to create a forecasting model to predict future health care demand. 
-                             This interactive dashboard displays the results of this analysis."),
+                           h3(strong("Elements")),
+                           h4("Positivity, Healthcare Pressure and Incidence"),
+                           p("Geostatistical kriging and non-linear transfer entropy are used to estimate weekly infection cases and 
+                           hospitalized. Non-linear and relationships used to perform predictions are adjusted considering weekly data.
+                           The variogram is assessing the statistical dependence over space for the estimated healthcare pressure. 
+                             A constant value of the semivariance determines the characteristic spatial distance at which HP looses 
+                             statistical dependence and healthcare fluxes (related to HP gradients) are no more expected."),
                            br(),
+                           h4("Risk Predictability and Gap Indices"),
+                           p("Risk index = Percentage variation in new weekly cases considering previous week"),
+                           p("Predictability index = Weekly updated Uncertainty reduction in hospitalized as a function of positivity"),
+                           p("Gap index = Weekly updated departure of observations and model estimates considering average Root Mean Square Error"),
+                           br(),
+                           h4("Emotional States and Most Popular Word-Pair Shifts and Extremes Events Detections"),
+                           p("The volume of tweets associated to certain emotions linked to top most popular word pairs is calculated. 
+                           This is different than a pure emotional assessment performed by other groups in the way we determine only 
+                           the emotions from the most popular Tweeted pairs. The basic model used to infer emotions is at …"),
                            
-                           h3("Who are we?"),
-                           p("We are the NEXUS Lab, a team of scientists lead by Dr. Matteo Convertino. 
+                           h3(strong("Validity")),
+                           h4("Spatial Validation and HP Characteristic Scale"),
+                           p("Heatzones of healthcare pressure (HP) are predicted in hospital-rich areas without imposing location of 
+                           hospitals (or other healthcare infrastructure) as a constraint with in the predictions. Small-/medium-range 
+                           autocorrelation of geolocated tweets and hospitals is observed. This is an additional form of validation of 
+                           the positivity-hospitalization functional relationship since it is expected to have heatzones in 
+                           hospital-rich areas where people are hospitalized. Then, the distance between geolocated tweets (and 
+                           associated gradient in positivity related to hospitalization) is physically meaningful and potentially 
+                           indicating fluxes of healthcare pressure (from zones of low HP to high HP)."),
+                           br(),
+                           p("This form of spatial validation of the model (i.e. in this case about the validity of Tweets as a spatial 
+                             transfer function of hospitalized) is provided by the independent prediction of expected hospitalized in 
+                             hospital-rich areas. Therefore, the higher the geographical overlap between hospitals and heatzones the 
+                             higher the accuracy of the positivity-hospitalization relationship. The correlation coefficient (magnitude 
+                             and sign) between positivity and hospitalization is revealing the potential risk aversion (or perception) 
+                             of populations: positive and negative correlation implies risk-taking (or misinformed) and risk-aversion 
+                             (or well-informed), respectively. Levels of positivity reflect risk magnitude of hospitalized and not risk 
+                             perception."),
+                           br(),
+                           h4("Spatial Scalability"),
+                           p("Scaling function based on population density or population can be used to scale up volumetric variables 
+                           (cases and hospitalization as well as Tweet volume) from the major city to the country scale. The major city 
+                           in a country is representative of at least 80% of events of the whole system. In term of positivity and 
+                             emotion fluctuations the same patterns over time are observed for major cities and the country."),
+                           br(),
+                           h4("Representativeness"),
+                           p("spatial influence representativeness: Tweets in a city contains information of spatially separated events 
+                             about the same process analyzed; thus spatial spread of COVID and top tweeted pairs can be calculated over 
+                             geolocated Tweets"),
+                           p("unreported information representativeness: Tweets reports information that may not be reported by 
+                             official media (see previous Tweet I sent for instance) and/or that may circulate in the general 
+                             population (very likely to be honest, e.g. just spoken information)"),
+                           p("technological representativeness: more often than not Twitter users are also using other widely popular 
+                             or ''local'' social media platforms (e.g. Facebook) where the same information is reported. This occurs 
+                             because of the explicit technological linkage between social media platforms (e.g. Facebook and Instagram 
+                             are linked) or simply because the implicit information perception and emotional state of people is 
+                             invariant at the moment of posting. Yet, posting time and content (related to volume and positivity) is 
+                             very weakly dependent on the social media platform."),
+                           p("population representativeness: despite Twitter penetration is different for different countries Tweets 
+                             show high relevance for predicting spatio-temporal patterns of infections and hospitalization. 
+                             Additionally, emotional states are highly linked to local non-Twitter media, yet they reflect the 
+                             volumetric and emotional states of the population investigated. Certainly, demographic and other features 
+                             of the tweeting population do not represent features of the whole population but those are not features 
+                             that are currently analyzed or used."),
+                          h3(strong("Data Sources")),
+                          h4("Epidemiological Data"),
+                          h4("Hospitalization Data and Inference"),
+                          h4("Twitter Data"),
+                          
+                          h3(strong("Who are we?")),
+                          p("We are the NEXUS Lab, a team of scientists lead by Dr. Matteo Convertino. 
                              At the Nexus Lab we are broadly interested in quantifying connections in complex socio-ecological 
                              and biological systems (the Nexus!) for understanding how ecosystem works, and designing them 
                              considering the desired objectives (”ecosystem services”).  
@@ -108,7 +163,7 @@ ui <- navbarPage( "InTo", theme = shinytheme("united"),
                              management solutions and design. "),
                            br(),
                            
-                           h3("Disclaimers"),
+                           h3(strong("Disclaimers")),
                            p("We do not plan to Tweet or Retweet any content. The aforementioned information from our analysis 
                            (predictability indicators over time and space, inferred sentiments, pressure on healthcare system, 
                            events and Tweets popularity, and vulnerability classes) will be shared on a public dashboard without 
@@ -128,157 +183,258 @@ server <- function(input, output, session) {
   # TweetMap
   observeEvent(input$display, {
     
-    #Generate tweet data
+    # Generate kriging data
     ifelse(input$city == "Bangkok",
-           tweetCoord <- filter(tweetCoord_Bang, 
-                                as.Date(day_created) >= input$dates[1], 
-                                as.Date(day_created) <= input$dates[2]),
+           kriginHosp <- krigingBan_hosp,
            ifelse(input$city == "New Delhi",
-                  tweetCoord <- filter(tweetCoord_Del, 
-                                       as.Date(day_created) >= input$dates[1], 
-                                       as.Date(day_created) <= input$dates[2]),
+                  kriginHosp <- krigingDel_hosp,
                   ifelse(input$city == "Jakarta",
-                         tweetCoord <- filter(tweetCoord_Jak, 
-                                              as.Date(day_created) >= input$dates[1], 
-                                              as.Date(day_created) <= input$dates[2]),
-                         tweetCoord <- filter(tweetCoord_Mum, 
-                                              as.Date(day_created) >= input$dates[1], 
-                                              as.Date(day_created) <= input$dates[2]))
-                  )
-               )
+                         kriginHosp <- krigingJak_hosp,
+                         kriginHosp <- krigingMum_hosp))
+    )
+    
+    ifelse(input$city == "Bangkok",
+           kriginCase <- krigingBan_case,
+           ifelse(input$city == "New Delhi",
+                  kriginCase <- krigingDel_case,
+                  ifelse(input$city == "Jakarta",
+                         kriginCase <- krigingJak_case,
+                         kriginCase <- krigingMum_case))
+    )
+    
+    # Krigin output
+    output$krigingMap <- renderLeaflet({
+      
+      # hospitalization prediction
+      mPredHosp = mean(kriginHosp$var1.pred, na.rm = T) 
+      
+      hosp_kde <- bkde2D(kriginHosp[ , c("lng", "lat")],
+                         bandwidth=c(.0045, .0068), gridsize = c(100,100))
+      
+      hosp_CL <- contourLines(hosp_kde$x1 , 
+                              hosp_kde$x2 , 
+                              hosp_kde$fhat)
+      
+      # EXTRACT CONTOUR LINE LEVELS
+      hosp_LEVS <- as.factor(sapply(hosp_CL, 
+                                    `[[`, "level"))
+      hosp_NLEV <- length(levels(hosp_LEVS))
+      
+      # CONVERT CONTOUR LINES TO POLYGONS
+      hosp_pgons <- lapply(1:length(hosp_CL), function(i)
+        Polygons(list(Polygon(cbind(hosp_CL[[i]]$x, 
+                                    hosp_CL[[i]]$y))), 
+                 ID=i))
+      hosp_spgons = SpatialPolygons(hosp_pgons)
+      
+      hosp_pal <- colorFactor(palette = "YlOrRd", 
+                              levels = hosp_LEVS, 
+                              reverse = F)
+      
+      # cases prediction
+      mPredCase = mean(kriginCase$var1.pred, na.rm = T)
+      
+      case_kde <- bkde2D(kriginCase[ , c("lng", "lat")],
+                         bandwidth=c(.0045, .0068), 
+                         gridsize = c(100,100))
+      
+      case_CL <- contourLines(case_kde$x1 , 
+                              case_kde$x2 , 
+                              case_kde$fhat)
+      
+      # EXTRACT CONTOUR LINE LEVELS
+      case_LEVS <- as.factor(sapply(case_CL, 
+                                    `[[`, "level"))
+      case_NLEV <- length(levels(case_LEVS))
+      
+      # CONVERT CONTOUR LINES TO POLYGONS
+      case_pgons <- lapply(1:length(case_CL), function(i)
+        Polygons(list(Polygon(cbind(case_CL[[i]]$x, 
+                                    case_CL[[i]]$y))), 
+                 ID=i))
+      case_spgons = SpatialPolygons(case_pgons)
+      
+      case_pal <- colorFactor(palette = "YlOrRd", 
+                              levels = case_LEVS, 
+                              reverse = F)
+      
+      leaflet() %>% 
+        addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+        addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OSM") %>%
+        addPolygons(group = "Hospitalization", 
+                    data = hosp_spgons,
+                    color = hosp_pal(hosp_LEVS),
+                    popup = htmlEscape(paste0(
+                      "Approximately ", 
+                      ifelse(as.numeric(as.character(hosp_LEVS)) - mPredHosp > 0,
+                             round(as.numeric(as.character(hosp_LEVS)) - mPredHosp), 0),
+                      " people here may require hospitalization next week.")
+                    )
+        ) %>%
+        addPolygons(group = "Cases", 
+                    data = case_spgons,
+                    color = case_pal(case_LEVS),
+                    popup = htmlEscape(paste0(
+                      "Approximately ", 
+                      ifelse(as.numeric(as.character(case_LEVS)) - mPredCase > 0,
+                             round(as.numeric(as.character(case_LEVS)) - mPredCase), 0),
+                      " people here may require hospitalization next week.")
+                    )
+        ) %>%
+        addLegend(pal = hosp_pal, values = hosp_LEVS, 
+                  position = "bottomright", 
+                  title = "Healthcare Pressure Indicator") %>%
+        addLayersControl(position = "bottomright",
+                         baseGroups = c("Satellite", "OSM"),
+                         overlayGroups = c("Hospitalization", "Cases"),
+                         options = layersControlOptions(collapsed = FALSE)
+        )
+      
+    })
+    
+    # #Generate tweet data
+    # ifelse(input$city == "Bangkok",
+    #        tweetCoord <- filter(tweetCoord_Bang,
+    #                             as.Date(day_created) >= input$dates[1],
+    #                             as.Date(day_created) <= input$dates[2]),
+    #        ifelse(input$city == "New Delhi",
+    #               tweetCoord <- filter(tweetCoord_Del,
+    #                                    as.Date(day_created) >= input$dates[1],
+    #                                    as.Date(day_created) <= input$dates[2]),
+    #               ifelse(input$city == "Jakarta",
+    #                      tweetCoord <- filter(tweetCoord_Jak,
+    #                                           as.Date(day_created) >= input$dates[1],
+    #                                           as.Date(day_created) <= input$dates[2]),
+    #                      tweetCoord <- filter(tweetCoord_Mum,
+    #                                           as.Date(day_created) >= input$dates[1],
+    #                                           as.Date(day_created) <= input$dates[2]))
+    #               )
+    #            )
     # 
     # #  
     # Tweet Timeline
-    output$sentiMeter <- renderPlot({
-      
-      p <- tweetCoord %>%
-        group_by(day_created) %>%
-        summarise(Sent = mean(Sent, na.rm = T),
-                  nTweets = mean(nTweets, na.rm = T)) %>%
-        ungroup() %>%
-        ggplot(aes(x = as.Date(day_created), y = Sent, color = nTweets, group = 1)) +
-        geom_line(size = 1, color = "black") +
-        geom_point(size = 5) +
-        scale_color_gradient2(mid = "yellow",midpoint = 5) +
-        guides(color = F) +
-        labs(x = "", y = "Positivity", color = "Mean Daily Tweets")+
-        tweetPlotTheme
-      
-      
-      p
-      
-    })
+    # output$sentiMeter <- renderPlot({
+    #   
+    #   p <- tweetCoord %>%
+    #     group_by(day_created) %>%
+    #     summarise(Sent = mean(Sent, na.rm = T),
+    #               nTweets = mean(nTweets, na.rm = T)) %>%
+    #     ungroup() %>%
+    #     ggplot(aes(x = as.Date(day_created), y = Sent, color = nTweets, group = 1)) +
+    #     geom_line(size = 1, color = "black") +
+    #     geom_point(size = 5) +
+    #     scale_color_gradient2(mid = "yellow",midpoint = 5) +
+    #     guides(color = F) +
+    #     labs(x = "", y = "Positivity", color = "Mean Daily Tweets")+
+    #     tweetPlotTheme
+    #   
+    #   
+    #   p
+    #   
+    # })
     # Generate tweet data
-    ifelse(input$city == "Bangkok",
-           tweetBigrams <- tweetBigrams_Bang,
-           ifelse(input$city == "New Delhi",
-                  tweetBigrams <- tweetBigrams_Del,
-                  ifelse(input$city == "Jakarta",
-                         tweetBigrams <- tweetBigrams_Jak,
-                         tweetBigrams <- tweetBigrams_Mum)
-                  )
-    )
+    # ifelse(input$city == "Bangkok",
+    #        tweetBigrams <- tweetBigrams_Bang,
+    #        ifelse(input$city == "New Delhi",
+    #               tweetBigrams <- tweetBigrams_Del,
+    #               ifelse(input$city == "Jakarta",
+    #                      tweetBigrams <- tweetBigrams_Jak,
+    #                      tweetBigrams <- tweetBigrams_Mum)
+    #               )
+    # )
     # 
     # Top Bigrams
-    output$top_bigrams <- renderPlot({
-
-      tweetBigramsPlot <- tweetBigrams %>%
-        ggplot(aes(x = reorder(pairs, n), y = n)) +
-        geom_bar(stat = "identity") +
-        coord_flip() +
-        labs(x = "", y = "Frequency", title = "Most Frequent Pairs") +
-        tweetPlotTheme
-
-      tweetBigramsPlot
-
-    })
+    # output$top_bigrams <- renderPlot({
+    # 
+    #   tweetBigramsPlot <- tweetBigrams %>%
+    #     ggplot(aes(x = reorder(pairs, n), y = n)) +
+    #     geom_bar(stat = "identity") +
+    #     coord_flip() +
+    #     labs(x = "", y = "Frequency", title = "Most Frequent Pairs") +
+    #     tweetPlotTheme
+    # 
+    #   tweetBigramsPlot
+    # 
+    # })
     
     # Top tweets and tweeters
-    misinform <- topTweets %>%
-      filter(as.Date(day_created) >= input$dates[1], 
-             as.Date(day_created) <= input$dates[2]) %>%
-      select("Date" = day_created,"User" = screen_name, 
-             "Tweet" = text, "Retweet Count" = retweet_count) 
+    # misinform <- topTweets %>%
+    #   filter(as.Date(day_created) >= input$dates[1], 
+    #          as.Date(day_created) <= input$dates[2]) %>%
+    #   select("Date" = day_created,"User" = screen_name, 
+    #          "Tweet" = text, "Retweet Count" = retweet_count) 
     
-    output$topTweets <- DT::renderDataTable({
-      
-      datatable(misinform, 
-                options = list(dom = "ftp",
-                               ordering = F,
-                               initComplete = JS(
-                                 "function(settings, json) {",
-                                 "$('th').css({'background-color': '#000', 'color': '#fff'});",
-                                 "}"))) 
-      
-    }, server = T)
+    # output$topTweets <- DT::renderDataTable({
+    #   
+    #   datatable(misinform, 
+    #             options = list(dom = "ftp",
+    #                            ordering = F,
+    #                            initComplete = JS(
+    #                              "function(settings, json) {",
+    #                              "$('th').css({'background-color': '#000', 'color': '#fff'});",
+    #                              "}"))) 
+    #   
+    # }, server = T)
     
-    output$misinform_selected <- DT::renderDataTable({
-
-      datatable(select(misinform[c(input$topTweets_rows_selected),], Tweet),
-                options = list(dom = "tp", ordering = F))
-      
-    })
+    # output$misinform_selected <- DT::renderDataTable({
+    # 
+    #   datatable(select(misinform[c(input$topTweets_rows_selected),], Tweet),
+    #             options = list(dom = "tp", ordering = F))
+    #   
+    # })
     
-    observeEvent(input$email,{
-
-      select(misinform[c(input$topTweets_rows_selected),], Tweet) %>%
-      write.csv("./data/misinformation.csv")
-
-      send.mail(
-        from = "elroy.galbraith@gmail.com",
-        to = c("nexuslabhokkaido@gmail.com"),
-        subject = "Selected misinforming tweets",
-        body = "Hi Nexus Lab, \n Attached are some misinforming tweets to track. \n Regards.",
-        smtp = list(host.name = "aspmx.l.google.com", port = 25),
-        authenticate = F,
-        attach.files = "./data/misinformation.csv",
-        send = T
-      )
-
-    })
+    # observeEvent(input$email,{
+    # 
+    #   select(misinform[c(input$topTweets_rows_selected),], Tweet) %>%
+    #   write.csv("./data/misinformation.csv")
+    # 
+    #   send.mail(
+    #     from = "elroy.galbraith@gmail.com",
+    #     to = c("nexuslabhokkaido@gmail.com"),
+    #     subject = "Selected misinforming tweets",
+    #     body = "Hi Nexus Lab, \n Attached are some misinforming tweets to track. \n Regards.",
+    #     smtp = list(host.name = "aspmx.l.google.com", port = 25),
+    #     authenticate = F,
+    #     attach.files = "./data/misinformation.csv",
+    #     send = T
+    #   )
+    # 
+    # })
     
     # Top Emotions
-    ifelse(input$city == "Bangkok",
-           tweetEmotions <- tweetEmo_Bang,
-           ifelse(input$city == "New Delhi",
-                  tweetEmotions <- tweetEmo_Del,
-                  ifelse(input$city == "Jakarta",
-                         tweetEmotions <- tweetEmo_Jak,
-                         tweetEmotions <- tweetEmo_Mum)
-           )
-    )
+    # ifelse(input$city == "Bangkok",
+    #        tweetEmotions <- tweetEmo_Bang,
+    #        ifelse(input$city == "New Delhi",
+    #               tweetEmotions <- tweetEmo_Del,
+    #               ifelse(input$city == "Jakarta",
+    #                      tweetEmotions <- tweetEmo_Jak,
+    #                      tweetEmotions <- tweetEmo_Mum)
+    #        )
+    # )
     
-    output$top_emotions <- renderPlot({
-      
-      ggwordcloud(words = tweetEmotions$sentiment, freq = tweetEmotions$n) +
-        labs(title = "Emotion of Most Retweeted Tweets") +
-        tweetPlotTheme
-      
-    })
+    # output$top_emotions <- renderPlot({
+    #   
+    #   ggwordcloud(words = tweetEmotions$sentiment, freq = tweetEmotions$n) +
+    #     labs(title = "Emotion of Most Retweeted Tweets") +
+    #     tweetPlotTheme
+    #   
+    # })
     # # 
     # Generate cases data
     ifelse(input$city == "Bangkok",
-           covidCases <- get_cases_data(input$city)%>%
-             filter(Date >= input$dates[1], 
-                    Date <= input$dates[2]) ,
+           covidCases <- epi_data_bang,
            ifelse(input$city == "New Delhi",
-                  covidCases <- covidCases_Del%>%
-                    filter(Date >= input$dates[1], 
-                           Date <= input$dates[2]) ,
+                  covidCases <- epi_data_delhi,
                   ifelse(input$city == "Jakarta",
-                         covidCases <- get_cases_data(input$city)%>%
-                           filter(Date >= input$dates[1], 
-                                  Date <= input$dates[2]) ,
-                         covidCases <- get_cases_data(input$city)%>%
-                           filter(Date >= input$dates[1], 
-                                  Date <= input$dates[2]) ))
+                         covidCases <- epi_data_jakarta,
+                         covidCases <- epi_data_mumbai))
     )
     # 
-    # Sentiment by Cases
+    # Cases
     output$caseTime <- renderPlot({
 
       cases_plot <- covidCases %>%
-        ggplot(aes(x = Date, y = value, group  = 1)) +
+        ggplot(aes(x = as.Date(recordDate), y = daily_case, group  = 1)) +
         geom_point() +
         geom_line() +
         labs(x = "", y = "New Cases") +
@@ -287,30 +443,12 @@ server <- function(input, output, session) {
       cases_plot
 
     })
-    # # 
-    # Generate hospitalization data
-    ifelse(input$city == "Bangkok",
-           covidHosp <- get_hosp_data(input$city)%>%
-             filter(Date >= input$dates[1], 
-                    Date <= input$dates[2]) ,
-           ifelse(input$city == "New Delhi",
-                  covidHosp <- covidHosp_Del%>%
-                    filter(Date >= input$dates[1], 
-                           Date <= input$dates[2]) ,
-                  ifelse(input$city == "Jakarta",
-                         covidHosp <- get_hosp_data(input$city)%>%
-                           filter(Date >= input$dates[1], 
-                                  Date <= input$dates[2]) ,
-                         covidHosp <- get_hosp_data(input$city)%>%
-                           filter(Date >= input$dates[1], 
-                                  Date <= input$dates[2]) ))
-    )
-    # 
-    # Sentiment by Hospitalization
+
+    # Hospitalization
     output$hospTime <- renderPlot({
 
-      hosp_plot <- covidHosp  %>%
-        ggplot(aes(x = Date, y = n, group = 1)) +
+      hosp_plot <- covidCases  %>%
+        ggplot(aes(x = as.Date(recordDate), y = hospital, group = 1)) +
         geom_point() +
         geom_line() +
         labs(x = "", y = "Hospitalizations") +
@@ -320,86 +458,34 @@ server <- function(input, output, session) {
 
     })
     # 
-    # Generate kriging data
-    kriginData <- kriging_Del
-    #
-    # Krigin output
-    output$krigingMap <- renderLeaflet({
-      
-      mPred = mean(kriginData$var1.pred, na.rm = T) 
-
-      kde <- bkde2D(kriginData[ , c("lng", "lat")],
-                    bandwidth=c(.0045, .0068), gridsize = c(100,100))
-
-      CL <- contourLines(kde$x1 , kde$x2 , kde$fhat)
-
-      # EXTRACT CONTOUR LINE LEVELS
-      LEVS <- as.factor(sapply(CL, `[[`, "level"))
-      NLEV <- length(levels(LEVS))
-
-      # CONVERT CONTOUR LINES TO POLYGONS
-      pgons <- lapply(1:length(CL), function(i)
-        Polygons(list(Polygon(cbind(CL[[i]]$x, CL[[i]]$y))), ID=i))
-      spgons = SpatialPolygons(pgons)
-      
-      pal <- colorFactor(palette = "YlOrRd", levels = LEVS, reverse = F)
-
-      leaflet(spgons) %>% 
-        addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
-        addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OSM") %>%
-        addPolygons( group = "Hospitalization",
-          color = pal(LEVS),
-                    popup = htmlEscape(paste0(
-                      "Approximately ", 
-                      ifelse(as.numeric(as.character(LEVS)) - mPred > 0,
-                             round(as.numeric(as.character(LEVS)) - mPred), 0),
-                             " people here may require hospitalization next week.")
-                                       )
-                    ) %>%
-        addPolygons( group = "Cases",
-                     color = pal(LEVS),
-                     popup = htmlEscape(paste0(
-                       "Approximately ", 
-                       ifelse(as.numeric(as.character(LEVS)) - mPred > 0,
-                              round(as.numeric(as.character(LEVS)) - mPred), 0),
-                       " people here may require hospitalization next week.")
-                     )
-        ) %>%
-        addLegend(pal = pal, values = LEVS, position = "bottomright", title = "Healthcare Pressure Indicator") %>%
-        addLayersControl(position = "bottomright",
-          baseGroups = c("Satellite", "OSM"),
-          overlayGroups = c("Hospitalization", "Cases"),
-          options = layersControlOptions(collapsed = FALSE)
-        )
-
-    })
+    
     
     # # present correlation and time series values
     # output$vals <- renderTable(select(assocVals_Del, -X))
     # 
     # tweet emotions over time
-    output$emoTime <- renderPlot({
-
-      emoPlot <- tweetEmotions_del %>%
-        filter(!sentiment %in% c("positive", "negative")) %>%
-        ggplot(aes(x = as.Date(day_created), y = n, color = sentiment, group = sentiment)) +
-        geom_line(size = 1) +
-        geom_point(size = 3) +
-        scale_color_manual(values = emoColors,
-                           labels = c("Anger",
-                                      "Anticipation",
-                                      "Disgust",
-                                      "Fear",
-                                      "Joy",
-                                      "Sadness",
-                                      "Surprise",
-                                      "Trust")) +
-        labs(x = "Date", y = "Number of words", color = "Emotion") +
-        tweetPlotTheme
-
-      emoPlot
-
-    })
+    # output$emoTime <- renderPlot({
+    # 
+    #   emoPlot <- tweetEmotions_del %>%
+    #     filter(!sentiment %in% c("positive", "negative")) %>%
+    #     ggplot(aes(x = as.Date(day_created), y = n, color = sentiment, group = sentiment)) +
+    #     geom_line(size = 1) +
+    #     geom_point(size = 3) +
+    #     scale_color_manual(values = emoColors,
+    #                        labels = c("Anger",
+    #                                   "Anticipation",
+    #                                   "Disgust",
+    #                                   "Fear",
+    #                                   "Joy",
+    #                                   "Sadness",
+    #                                   "Surprise",
+    #                                   "Trust")) +
+    #     labs(x = "Date", y = "Number of words", color = "Emotion") +
+    #     tweetPlotTheme
+    # 
+    #   emoPlot
+    # 
+    # })
     
     })
 
