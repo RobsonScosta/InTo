@@ -7,7 +7,6 @@
   zoom: 0.9;
   transition: opacity 500ms 1s;
   z-index: 10;
-  margin: auto;
 }
 
 #controls:hover {

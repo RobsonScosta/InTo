@@ -4,7 +4,7 @@ library("rJava")
 # Change location of jar to match yours:
 #  IMPORTANT -- If using the default below, make sure you have set the working directory
 #   in R (e.g. with setwd()) to the location of this file (i.e. demos/r) !!
-.jaddClassPath("/home/lijie/twitterData/infodynamics-dist-1.5/infodynamics.jar")
+.jaddClassPath("./infodynamics-dist-1.5/infodynamics.jar")
 
 teCal_jidt_ksg_func <- function(srcArr,dstArr,k,histLen){
   # k: "4" as an example; histLen: 1L as an example

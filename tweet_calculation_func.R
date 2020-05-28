@@ -89,13 +89,14 @@ stm_labMT_daily_func_elroy <- function(tweet){
 
 
 csv_epi_india_func <- function(city){
-  india_cases <- read.csv("./data/complete.csv") %>%
-    filter(`Name.of.State...UT` == city) %>%    #  Delhi --> Delhi; Membai --> Maharashtra
+  india_cases <- read.csv("./tweetData/complete.csv") %>%
+    filter(`Name.of.State...UT` == "Delhi") %>%    #  Delhi --> Delhi; Membai --> Maharashtra
     mutate(Date = as.Date(Date)) %>%
     arrange(Date) %>%
     mutate(newCases = Total.Confirmed.cases - lag(Total.Confirmed.cases)) %>%
-    mutate(activeCases = Total.Confirmed.cases - Cured.Discharged.Migrated) %>%
-    select(Date, Total.Confirmed.cases, Cured.Discharged.Migrated, newCases, activeCases)
+    mutate(activeCases = Total.Confirmed.cases - (Cured.Discharged.Migrated + Death)) %>%
+    mutate(newActiveCases = activeCases - lag(activeCases)) %>%
+    select(Date, Total.Confirmed.cases, Cured.Discharged.Migrated, newCases, activeCases, newActiveCases)
   # pivot_longer(cols = c(Total.Confirmed.cases, newCases))
   
   return(india_cases)

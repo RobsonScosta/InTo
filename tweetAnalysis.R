@@ -18,7 +18,7 @@ ggmap_key <- "AIzaSyB055tAEERlsleH1Xf83-JqAa530V7roTk"
 register_google(key = ggmap_key, write = TRUE)
 
 # name of Location
-loc = "bangkok"
+loc = "delhi"
 
 locCode = ifelse(loc == "delhi",
                  "DL",
@@ -175,6 +175,104 @@ ts_plot(tweet, "days") +
   labs(title = loc, x = "Days", y = "Number of Tweets") +
   tweetPlotTheme
   
+loc = "bangkok"
+
+for (loc in c("bangkok", "delhi", "jakarta", "mumbai")) {
+  
+  # List the files of csvs
+  list_of_files <- list.files(path = paste0("./tweetData/", loc, "/"), recursive = TRUE,
+                              pattern = "\\.csv", 
+                              full.names = TRUE)
+  
+  # Read files and merge them into one file
+  tweet <- list_of_files %>%
+    set_names(.) %>%
+    map_df(.f = ~read_csv(file = .x), .id = "FileName") %>%
+    select(user_id, status_id, created_at, screen_name, text, retweet_count, coords_coords)
+  
+  # Bigrams
+  misinformation_Bigrams <- tweet %>%
+    filter(str_detect(text, "misinformation|fake|lie|false")) %>%
+    mutate(text = rm_twitter_url(text) %>%
+             str_remove_all(pattern = "[:punct:]") %>%
+             str_remove_all(pattern = "[:digit:]")) %>%
+    unnest_tokens("word", "text", token = "ngrams", n = 2) %>%
+    separate(col = word, into = c("word1", "word2"), sep = " ") %>%
+    filter(!(word1 %in% c(stop_words$word, "coronavirus", "covid19", 
+                          "#covid19", "#coronavirus", "#covid2019", "amp", "covid", "-", "|", "19"))) %>%
+    filter(!(word2 %in% c(stop_words$word, "coronavirus", "covid19", 
+                          "#covid19", "#coronavirus", "#covid2019", "amp", "covid", "-", "|", "19"))) %>%
+    unite(col = "pairs", c(word1, word2), sep = " ") %>%
+    group_by("day_created" = strftime(created_at, format = "%Y-%m-%d"), pairs) %>%
+    count() %>%
+    ungroup()
+  
+  write.csv(misinformation_Bigrams, paste0("./data/misinformation_Bigrams_", loc,".csv"))
+  
+  # Unnest tweets
+  unnest_misinformation_tweet <- tweet %>%
+    filter(str_detect(text, "misinformation|fake|lie|false")) %>%
+    # replace abbreviations and contractions
+    mutate(text = replace_abbreviation(text) %>% 
+             replace_symbol() %>%
+             replace_contraction() %>%
+             replace_ordinal() %>%
+             replace_number()) %>%
+    # tokenize, ie. separate a tweet text into its constituent elements
+    unnest_tokens("word", "text", token = "tweets", 
+                  strip_punct = T, strip_url = T)
+  
+  misinformation_tweet_emotions <- unnest_misinformation_tweet %>%
+    inner_join(get_sentiments("nrc")) %>%
+    group_by("day_created" = strftime(created_at, format = "%Y-%m-%d"),
+             sentiment) %>%
+    count() %>%
+    ungroup()
+  
+  write.csv(misinformation_tweet_emotions, paste0("./data/misinformation_tweet_emotions_", loc,".csv"))
+  
+  healthcare_Bigrams <- tweet %>%
+    filter(str_detect(text, "hospital|test")) %>%
+    mutate(text = rm_twitter_url(text) %>%
+             str_remove_all(pattern = "[:punct:]") %>%
+             str_remove_all(pattern = "[:digit:]")) %>%
+    unnest_tokens("word", "text", token = "ngrams", n = 2) %>%
+    separate(col = word, into = c("word1", "word2"), sep = " ") %>%
+    filter(!(word1 %in% c(stop_words$word, "coronavirus", "covid19", 
+                          "#covid19", "#coronavirus", "#covid2019", "amp", "covid", "-", "|", "19"))) %>%
+    filter(!(word2 %in% c(stop_words$word, "coronavirus", "covid19", 
+                          "#covid19", "#coronavirus", "#covid2019", "amp", "covid", "-", "|", "19"))) %>%
+    unite(col = "pairs", c(word1, word2), sep = " ") %>%
+    group_by("day_created" = strftime(created_at, format = "%Y-%m-%d"), pairs) %>%
+    count() %>%
+    ungroup()
+  
+  write.csv(healthcare_Bigrams, paste0("./data/healthcare_Bigrams_", loc,".csv"))
+  
+  # Unnest tweets
+  unnest_healthcare_tweet <- tweet %>%
+    filter(str_detect(text, "hospital|test")) %>%
+    # replace abbreviations and contractions
+    mutate(text = replace_abbreviation(text) %>% 
+             replace_symbol() %>%
+             replace_contraction() %>%
+             replace_ordinal() %>%
+             replace_number()) %>%
+    # tokenize, ie. separate a tweet text into its constituent elements
+    unnest_tokens("word", "text", token = "tweets", 
+                  strip_punct = T, strip_url = T)
+  
+  healthcare_tweet_emotions <- unnest_healthcare_tweet %>%
+    inner_join(get_sentiments("nrc")) %>%
+    group_by("day_created" = strftime(created_at, format = "%Y-%m-%d"),
+             sentiment) %>%
+    count() %>%
+    ungroup()
+  
+  write.csv(healthcare_tweet_emotions, paste0("./data/healthcare_tweet_emotions_", loc,".csv"))
+  
+}
+
 # Unnest tweets
 unnest_tweet <- tweet %>%
   # replace abbreviations and contractions
@@ -187,32 +285,14 @@ unnest_tweet <- tweet %>%
   unnest_tokens("word", "text", token = "tweets", 
                 strip_punct = T, strip_url = T)
 
-topBigrams <- tweet %>%
-  mutate(text = rm_twitter_url(text) %>%
-           str_remove_all(pattern = "[:punct:]") %>%
-           str_remove_all(pattern = "[:digit:]")) %>%
-  unnest_tokens("word", "text", token = "ngrams", n = 2) %>%
-  separate(col = word, into = c("word1", "word2"), sep = " ") %>%
-  filter(!(word1 %in% c(stop_words$word, "coronavirus", "covid19", 
-                        "#covid19", "#coronavirus", "#covid2019", "amp", "covid", "-", "|", "19"))) %>%
-  filter(!(word2 %in% c(stop_words$word, "coronavirus", "covid19", 
-                        "#covid19", "#coronavirus", "#covid2019", "amp", "covid", "-", "|", "19"))) %>%
-  unite(col = "pairs", c(word1, word2), sep = " ") %>%
-  group_by("day_created" = strftime(created_at, format = "%Y-%m-%d"), pairs) %>%
+tweet_emotions <- unnest_tweet %>%
+  inner_join(get_sentiments("nrc")) %>%
+  group_by("day_created" = strftime(created_at, format = "%Y-%m-%d"),
+           sentiment) %>%
   count() %>%
-  ungroup() %>%
-  group_by(day_created) %>%
-  # change n to whatever number required
-  top_n(n = 30, wt = n) %>%
   ungroup()
 
-# top tweets and tweets
-topTweets <- tweet %>%
-  group_by("day_created" = strftime(created_at, format = "%Y-%m-%d")) %>%
-  top_n(5,retweet_count) %>%
-  ungroup()
-
-write.csv(topTweets, "./data/topTweets.csv")
+write.csv(tweet_emotions, paste0("./data/tweetEmo_", loc,".csv"))
 
 # sentiment valence
 tweet_sentiment <- unnest_tweet %>%
@@ -229,6 +309,12 @@ tweet_sentiment <- unnest_tweet %>%
   mutate(lng = as.numeric(lng),
          lat = as.numeric(lat),
          day_created = as.Date(day_created)) 
+
+tweetText_sentiment <- tweet %>% 
+  mutate(day_created = as.Date(strftime(created_at, format = "%Y-%m-%d"))) %>%
+  left_join(tweet_sentiment, by = c("user_id", "status_id", "day_created"))
+
+write.csv(tweetText_sentiment, paste0("./data/tweetText_sentiment_", loc,".csv"))
 
 topBigramsSentiment <- topBigrams %>%
   separate(col = pairs, into = c("word1", "word2"), sep = " ") %>%
@@ -265,18 +351,6 @@ tweet_sentiment %>%
   tweetPlotTheme
 
 # emotion 
-tweet_emotions <- unnest_tweet %>%
-  inner_join(get_sentiments("nrc")) %>%
-  group_by("day_created" = strftime(created_at, format = "%Y-%m-%d"),
-           sentiment) %>%
-  count() %>%
-  ungroup()
-  
-topBigramsEmotions <- topBigrams %>%
-  separate(col = pairs, into = c("word1", "word2"), sep = " ") %>%
-  inner_join(y = get_sentiments("nrc"), by = c("word1"="word")) %>%
-  inner_join(y = get_sentiments("nrc"), by = c("word2"="word"),suffix = c("1","2"))
-
 emoColors <- c("anger" = "#fe0000", "anticipation" = "#fea853", "disgust" = "#ff54ff", 
                             "fear" = "#009600", "joy" = "#ffff54", "sadness" = "#5151ff", 
                             "surprise" = "#5abdff", "trust" = "#52ff4f")

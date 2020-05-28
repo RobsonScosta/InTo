@@ -15,14 +15,14 @@ ui <- navbarPage( "InTo", theme = shinytheme("united"),
                            div(tags$head(includeCSS("styles.css"))),
                            
                            absolutePanel(id = "controls", class = "panel panel-default",
-                                         top = 250, left = 0, right = 0, bottom = 0, 
+                                         top = 250, left = 55, right = 0, bottom = 0, 
                                          width = 300, height = 850, fixed=TRUE, draggable = TRUE,
                                          
                                          selectInput(inputId = "city", label = "Choose a Location", 
                                                      choices = c( "New Delhi",
                                                                   "Bangkok", "Jakarta", "Mumbai"
                                                      ), 
-                                                     selected = "New Delhi"),
+                                                     selected = "Jakarta"),
                                          br(),
                                          actionButton("display", "Select"),
                                          br(),
@@ -36,44 +36,91 @@ ui <- navbarPage( "InTo", theme = shinytheme("united"),
                            h6("To get started, choose your Location and Date Range in the panel on the right and
                                  then click Select."),
                            
-                           leafletOutput("krigingMap", height = 900)
+                           google_mapOutput("krigingMap", height = 800)
                   ),
                   
-                  tabPanel(title = "Top words",
+                  tabPanel(title = "Tweet Analysis",
                            
                            fluidRow(
                              
-                             column(width = 6, 
-                                    plotOutput("top_bigrams") %>% withSpinner()),
-                             column(width = 4,
-                                    dateRangeInput(inputId = "topTweet_dates", label = "Select a Date Range",
-                                                   min = "2020-01-01", max = "2020-12-31",
-                                                   start = "2020-04-01", end = "2020-04-30"))
+                             radioButtons("tweetSet", 'Select Tweet Content',
+                                          choices = c("All", "Misinformation", "Healthcare"),
+                                          inline = T),
+                             
+                             h3("Tweet Emotions over Time"),
+                             
+                             plotOutput("emoTime") %>% withSpinner()
                            ),
                            fluidRow(
-                             h3("Tweet Emotions over Time"),
-                             column(width = 5, 
-                                    plotOutput("top_emotions") %>% withSpinner()),
-                             column(width = 5, offset = 1,
-                                    plotOutput("emoTime") %>% withSpinner()))
+                             
+                             column(width = 6,
+                                    
+                                    DT::dataTableOutput("Tweets")
+                                    ),
+                             column(width = 4,
+                                    fluidRow(
+                                      column(width = 4,dateInput(inputId = "topWord_dates", label = "Select a Date",
+                                                                 value = "2020-04-24")),
+                                      column(width = 4,sliderInput(inputId = "bigram_n", label = "Select number to show", 
+                                                         value = 10, min = 10, max=30, step = 5)),
+                                      column(width = 4, actionButton(inputId = "filter", "Filter"))
+                                      ),
+                                    fluidRow(plotOutput("bigrams") %>% withSpinner())
+                                    )
+                             
+                             )
                            ),
                   
-                  tabPanel(title = "Predictability"),
-                  
-                  tabPanel(title = "Potential Misinformation",
+                  tabPanel(title = "Predictability",
                            
-                           column(width = 7,
-                                  h4("Help us identify misinformation. Select a misinforming text below."),
-                                  DT::dataTableOutput("topTweets")%>% withSpinner()),
-                           column(width = 4,
-                                  h4("Selected Misinformation"),
-                                  DT::dataTableOutput("misinform_selected"),
-                                  actionButton("email", "Send")
-                                  
-                                  )
+                           column(width = 5,
+                                  h3(strong("Cases")),
+                                  DT::dataTableOutput("case_predictors")),
+                           
+                           column(width = 5,
+                                  h3(strong("Hospitalization")),
+                                  DT::dataTableOutput("hosp_predictors"))
+                           
                            ),
                   
-                  tabPanel(title = "Healthcare Satisfaction"),
+                  # tabPanel(title = "Potential Misinformation",
+                  #          
+                  #          fluidRow(
+                  #            h3("Tweet Emotions over Time"),
+                  #            plotOutput("misinformation_emotion") %>% withSpinner()
+                  #            ),
+                  #          
+                  #          fluidRow(
+                  #            column(width = 7,
+                  #                   h4("Tweets about misinformation or fake news"),
+                  #                   DT::dataTableOutput("misinformingTweets") %>% withSpinner()              
+                  #          ),
+                  #          column(width = 4,
+                  #                 # h4("Selected Misinformation"),
+                  #                 # DT::dataTableOutput("misinform_selected"),
+                  #                 # actionButton("email", "Send")
+                  #                 h4("Top Pairs of Words from Misinforming tweets"),
+                  #                 plotOutput("misinforming_bigrams") %>% withSpinner()
+                  #          ))
+                  #          ),
+                  # 
+                  # tabPanel(title = "Healthcare Satisfaction",
+                  #          fluidRow(h3("Tweet Emotions over Time"),
+                  #                   
+                  #                   plotOutput("healthcare_emotion") %>% withSpinner()),
+                  #          fluidRow(
+                  #            column(width = 7,
+                  #                   h4("Tweets about healthcare"),
+                  #                   DT::dataTableOutput("healthcareTweets") %>% withSpinner()              
+                  #            ),
+                  #            column(width = 4,
+                  #                   # h4("Selected Misinformation"),
+                  #                   # DT::dataTableOutput("misinform_selected"),
+                  #                   # actionButton("email", "Send")
+                  #                   h4("Top Pairs of Words from Healthcare tweets"),
+                  #                   plotOutput("healthcare_bigrams") %>% withSpinner()
+                  #            ))
+                  #          ),
                   
                   tabPanel(title = "About",
                            
@@ -193,196 +240,448 @@ server <- function(input, output, session) {
                          kriginHosp <- krigingMum_hosp))
     )
     
-    ifelse(input$city == "Bangkok",
-           kriginCase <- krigingBan_case,
-           ifelse(input$city == "New Delhi",
-                  kriginCase <- krigingDel_case,
-                  ifelse(input$city == "Jakarta",
-                         kriginCase <- krigingJak_case,
-                         kriginCase <- krigingMum_case))
-    )
+    # ifelse(input$city == "Bangkok",
+    #        kriginCase <- krigingBan_case,
+    #        ifelse(input$city == "New Delhi",
+    #               kriginCase <- krigingDel_case,
+    #               ifelse(input$city == "Jakarta",
+    #                      kriginCase <- krigingJak_case,
+    #                      kriginCase <- krigingMum_case))
+    # )
     
     # Krigin output
-    output$krigingMap <- renderLeaflet({
+    output$krigingMap <- renderGoogle_map({
       
-      # hospitalization prediction
-      mPredHosp = mean(kriginHosp$var1.pred, na.rm = T) 
+      google_map(key = ggmap_key, data = kriginHosp, search_box = T) %>% 
+        add_circles(lat = "lat", lon = "lng", draggable = F, mouse_over = "predShow") %>%
+        add_heatmap(lat = "lat",lon = "lng", weight = "pred0", option_opacity = 0.5, option_radius = 0.009,
+                    option_gradient = gradient,
+                    legend = T, legend_options = list(title  = "Healthcare Pressure",
+                                                      position = "TOP_RIGHT")) 
       
-      hosp_kde <- bkde2D(kriginHosp[ , c("lng", "lat")],
-                         bandwidth=c(.0045, .0068), gridsize = c(100,100))
-      
-      hosp_CL <- contourLines(hosp_kde$x1 , 
-                              hosp_kde$x2 , 
-                              hosp_kde$fhat)
-      
-      # EXTRACT CONTOUR LINE LEVELS
-      hosp_LEVS <- as.factor(sapply(hosp_CL, 
-                                    `[[`, "level"))
-      hosp_NLEV <- length(levels(hosp_LEVS))
-      
-      # CONVERT CONTOUR LINES TO POLYGONS
-      hosp_pgons <- lapply(1:length(hosp_CL), function(i)
-        Polygons(list(Polygon(cbind(hosp_CL[[i]]$x, 
-                                    hosp_CL[[i]]$y))), 
-                 ID=i))
-      hosp_spgons = SpatialPolygons(hosp_pgons)
-      
-      hosp_pal <- colorFactor(palette = "YlOrRd", 
-                              levels = hosp_LEVS, 
-                              reverse = F)
-      
-      # cases prediction
-      mPredCase = mean(kriginCase$var1.pred, na.rm = T)
-      
-      case_kde <- bkde2D(kriginCase[ , c("lng", "lat")],
-                         bandwidth=c(.0045, .0068), 
-                         gridsize = c(100,100))
-      
-      case_CL <- contourLines(case_kde$x1 , 
-                              case_kde$x2 , 
-                              case_kde$fhat)
-      
-      # EXTRACT CONTOUR LINE LEVELS
-      case_LEVS <- as.factor(sapply(case_CL, 
-                                    `[[`, "level"))
-      case_NLEV <- length(levels(case_LEVS))
-      
-      # CONVERT CONTOUR LINES TO POLYGONS
-      case_pgons <- lapply(1:length(case_CL), function(i)
-        Polygons(list(Polygon(cbind(case_CL[[i]]$x, 
-                                    case_CL[[i]]$y))), 
-                 ID=i))
-      case_spgons = SpatialPolygons(case_pgons)
-      
-      case_pal <- colorFactor(palette = "YlOrRd", 
-                              levels = case_LEVS, 
-                              reverse = F)
-      
-      leaflet() %>% 
-        addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
-        addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OSM") %>%
-        addPolygons(group = "Hospitalization", 
-                    data = hosp_spgons,
-                    color = hosp_pal(hosp_LEVS),
-                    popup = htmlEscape(paste0(
-                      "Approximately ", 
-                      ifelse(as.numeric(as.character(hosp_LEVS)) - mPredHosp > 0,
-                             round(as.numeric(as.character(hosp_LEVS)) - mPredHosp), 0),
-                      " people here may require hospitalization next week.")
-                    )
-        ) %>%
-        addPolygons(group = "Cases", 
-                    data = case_spgons,
-                    color = case_pal(case_LEVS),
-                    popup = htmlEscape(paste0(
-                      "Approximately ", 
-                      ifelse(as.numeric(as.character(case_LEVS)) - mPredCase > 0,
-                             round(as.numeric(as.character(case_LEVS)) - mPredCase), 0),
-                      " people here may require hospitalization next week.")
-                    )
-        ) %>%
-        addLegend(pal = hosp_pal, values = hosp_LEVS, 
-                  position = "bottomright", 
-                  title = "Healthcare Pressure Indicator") %>%
-        addLayersControl(position = "bottomright",
-                         baseGroups = c("Satellite", "OSM"),
-                         overlayGroups = c("Hospitalization", "Cases"),
-                         options = layersControlOptions(collapsed = FALSE)
-        )
+      # # hospitalization prediction
+      # mPredHosp = mean(kriginHosp$var1.pred, na.rm = T) 
+      # 
+      # hosp_kde <- bkde2D(kriginHosp[ , c("lng", "lat")],
+      #                    bandwidth=c(.0045, .0068), gridsize = c(100,100))
+      # 
+      # hosp_CL <- contourLines(hosp_kde$x1 , 
+      #                         hosp_kde$x2 , 
+      #                         hosp_kde$fhat)
+      # 
+      # # EXTRACT CONTOUR LINE LEVELS
+      # hosp_LEVS <- as.factor(sapply(hosp_CL, 
+      #                               `[[`, "level"))
+      # hosp_NLEV <- length(levels(hosp_LEVS))
+      # 
+      # # CONVERT CONTOUR LINES TO POLYGONS
+      # hosp_pgons <- lapply(1:length(hosp_CL), function(i)
+      #   Polygons(list(Polygon(cbind(hosp_CL[[i]]$x, 
+      #                               hosp_CL[[i]]$y))), 
+      #            ID=i))
+      # hosp_spgons = SpatialPolygons(hosp_pgons)
+      # 
+      # hosp_pal <- colorFactor(palette = "YlOrRd", 
+      #                         levels = hosp_LEVS, 
+      #                         reverse = F)
+      # 
+      # # cases prediction
+      # mPredCase = mean(kriginCase$var1.pred, na.rm = T)
+      # 
+      # case_kde <- bkde2D(kriginCase[ , c("lng", "lat")],
+      #                    bandwidth=c(.0045, .0068), 
+      #                    gridsize = c(100,100))
+      # 
+      # case_CL <- contourLines(case_kde$x1 , 
+      #                         case_kde$x2 , 
+      #                         case_kde$fhat)
+      # 
+      # # EXTRACT CONTOUR LINE LEVELS
+      # case_LEVS <- as.factor(sapply(case_CL, 
+      #                               `[[`, "level"))
+      # case_NLEV <- length(levels(case_LEVS))
+      # 
+      # # CONVERT CONTOUR LINES TO POLYGONS
+      # case_pgons <- lapply(1:length(case_CL), function(i)
+      #   Polygons(list(Polygon(cbind(case_CL[[i]]$x, 
+      #                               case_CL[[i]]$y))), 
+      #            ID=i))
+      # case_spgons = SpatialPolygons(case_pgons)
+      # 
+      # case_pal <- colorFactor(palette = "YlOrRd", 
+      #                         levels = case_LEVS, 
+      #                         reverse = F)
+      # 
+      # leaflet() %>% 
+      #   addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+      #   addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OSM") %>%
+      #   addPolygons(group = "Hospitalization", 
+      #               data = hosp_spgons,
+      #               color = hosp_pal(hosp_LEVS),
+      #               popup = htmlEscape(hosp_LEVS
+      #                 # paste0(
+      #                 # "Approximately ", 
+      #                 # ifelse(as.numeric(as.character(hosp_LEVS)) - mPredHosp > 0,
+      #                 #        round(as.numeric(as.character(hosp_LEVS)) - mPredHosp), 0),
+      #                 # " people here may require hospitalization next week.")
+      #               )
+      #   ) %>%
+      #   addPolygons(group = "Cases", 
+      #               data = case_spgons,
+      #               color = case_pal(case_LEVS),
+      #               popup = htmlEscape(case_LEVS
+      #                 # paste0(
+      #                 # "Approximately ", 
+      #                 # ifelse(as.numeric(as.character(case_LEVS)) - mPredCase > 0,
+      #                 #        round(as.numeric(as.character(case_LEVS)) - mPredCase), 0),
+      #                 # " people here may require hospitalization next week.")
+      #               )
+      #   ) %>%
+      #   addLegend(pal = hosp_pal, values = hosp_LEVS, group = "Hospitalization",
+      #             position = "bottomright", 
+      #             title = "Healthcare Pressure Indicator") %>%
+      #   addLegend(pal = case_pal, values = case_LEVS, group = "Cases",
+      #             position = "bottomright", 
+      #             title = "Healthcare Pressure Indicator") %>%
+      #   addLayersControl(position = "bottomright",
+      #                    baseGroups = c("Satellite", "OSM"),
+      #                    overlayGroups = c("Hospitalization", "Cases"),
+      #                    options = layersControlOptions(collapsed = FALSE)
+        # )
       
     })
     
-    # #Generate tweet data
-    # ifelse(input$city == "Bangkok",
-    #        tweetCoord <- filter(tweetCoord_Bang,
-    #                             as.Date(day_created) >= input$dates[1],
-    #                             as.Date(day_created) <= input$dates[2]),
-    #        ifelse(input$city == "New Delhi",
-    #               tweetCoord <- filter(tweetCoord_Del,
-    #                                    as.Date(day_created) >= input$dates[1],
-    #                                    as.Date(day_created) <= input$dates[2]),
-    #               ifelse(input$city == "Jakarta",
-    #                      tweetCoord <- filter(tweetCoord_Jak,
-    #                                           as.Date(day_created) >= input$dates[1],
-    #                                           as.Date(day_created) <= input$dates[2]),
-    #                      tweetCoord <- filter(tweetCoord_Mum,
-    #                                           as.Date(day_created) >= input$dates[1],
-    #                                           as.Date(day_created) <= input$dates[2]))
-    #               )
-    #            )
-    # 
-    # #  
+    #Generate tweet data
+    ifelse(input$city == "Bangkok",
+           tweetCoord <- tweetCoord_Bang,
+           ifelse(input$city == "New Delhi",
+                  tweetCoord <- tweetCoord_Del,
+                  ifelse(input$city == "Jakarta",
+                         tweetCoord <- tweetCoord_Jak,
+                         tweetCoord <- tweetCoord_Mum)
+                  )
+               )
+    
     # Tweet Timeline
-    # output$sentiMeter <- renderPlot({
-    #   
-    #   p <- tweetCoord %>%
-    #     group_by(day_created) %>%
-    #     summarise(Sent = mean(Sent, na.rm = T),
-    #               nTweets = mean(nTweets, na.rm = T)) %>%
-    #     ungroup() %>%
-    #     ggplot(aes(x = as.Date(day_created), y = Sent, color = nTweets, group = 1)) +
-    #     geom_line(size = 1, color = "black") +
-    #     geom_point(size = 5) +
-    #     scale_color_gradient2(mid = "yellow",midpoint = 5) +
-    #     guides(color = F) +
-    #     labs(x = "", y = "Positivity", color = "Mean Daily Tweets")+
-    #     tweetPlotTheme
-    #   
-    #   
-    #   p
-    #   
-    # })
-    # Generate tweet data
-    # ifelse(input$city == "Bangkok",
-    #        tweetBigrams <- tweetBigrams_Bang,
-    #        ifelse(input$city == "New Delhi",
-    #               tweetBigrams <- tweetBigrams_Del,
+    output$sentiMeter <- renderPlot({
+
+      p <- tweetCoord %>%
+        ggplot(aes(x = as.Date(recordDate), y = mean_daily_stm, group = 1)) +
+        geom_line(size = 1, color = "black") +
+        geom_point(size = 5) +
+        scale_color_gradient2(mid = "yellow",midpoint = 5) +
+        guides(color = F) +
+        labs(x = "", y = "Positivity")+
+        tweetPlotTheme
+      p
+    })
+    
+    # Generate cases data
+    ifelse(input$city == "Bangkok",
+           covidCases <- read.csv("./data/epi_data_bangkok.csv"),
+           ifelse(input$city == "New Delhi",
+                  covidCases <- read.csv("./data/epi_data_new delhi.csv"),
+                  ifelse(input$city == "Jakarta",
+                         covidCases <- read.csv("./data/epi_data_mumbai.csv"),
+                         covidCases <- read.csv("./data/epi_data_jakarta.csv")))
+    )
+    # 
+    # Cases
+    output$caseTime <- renderPlot({
+      
+      cases_plot <- covidCases %>%
+        ggplot(aes(x = as.Date(recordDate), y = daily_case, group  = 1)) +
+        geom_point() +
+        geom_line() +
+        labs(x = "", y = "New Cases") +
+        tweetPlotTheme
+      
+      cases_plot
+      
+    })
+    
+    # Hospitalization
+    output$hospTime <- renderPlot({
+      
+      hosp_plot <- covidCases  %>%
+        ggplot(aes(x = as.Date(recordDate), y = hospital, group = 1)) +
+        geom_point() +
+        geom_line() +
+        labs(x = "", y = "Hospitalizations") +
+        tweetPlotTheme
+      
+      hosp_plot
+      
+    })
+    
+    ## Text Analysis
+    observeEvent(input$tweetSet,{
+      
+      # Top Emotions
+      ifelse(input$city == "Bangkok" & input$tweetSet == "All",
+             tweetEmotions <- read.csv("./data/tweetEmo_bangkok.csv"),
+             ifelse(input$city == "New Delhi" & input$tweetSet == "All",
+                    tweetEmotions <- read.csv("./data/tweetEmo_delhi.csv") ,
+                    ifelse(input$city == "Jakarta" & input$tweetSet == "All",
+                           tweetEmotions <- read.csv("./data/tweetEmo_jakarta.csv"),
+                           ifelse(input$city == "Mumbai" & input$tweetSet == "All",
+                                  tweetEmotions <- read.csv("./data/tweetEmo_mumbai.csv"),
+                                  ifelse(input$city == "Bangkok" & input$tweetSet == "Misinformation",
+                                         tweetEmotions <- read.csv("./data/misinformation_tweet_emotions_bangkok.csv"),
+                                         ifelse(input$city == "New Delhi" & input$tweetSet == "Misinformation",
+                                                tweetEmotions <- read.csv("./data/misinformation_tweet_emotions_delhi.csv"),
+                                                ifelse(input$city == "Jakarta" & input$tweetSet == "Misinformation",
+                                                       tweetEmotions <- read.csv("./data/misinformation_tweet_emotions_jakarta.csv"),
+                                                       ifelse(input$city == "Mumbai" & input$tweetSet == "Misinformation",
+                                                              tweetEmotions <- read.csv("./data/misinformation_tweet_emotions_mumbai.csv"),
+                                                              ifelse(input$city == "Bangkok" & input$tweetSet == "Healthcare",
+                                                                     tweetEmotions <- read.csv("./data/healthcare_tweet_emotions_bangkok.csv"),
+                                                                     ifelse(input$city == "New Delhi" & input$tweetSet == "Healthcare",
+                                                                            tweetEmotions <- read.csv("./data/healthcare_tweet_emotions_delhi.csv"),
+                                                                            ifelse(input$city == "Jakarta" & input$tweetSet == "Healthcare",
+                                                                                   tweetEmotions <- read.csv("./data/healthcare_tweet_emotions_jakarta.csv"),
+                                                                                   tweetEmotions <- read.csv("./data/healthcare_tweet_emotions_mumbai.csv"))))))))))))
+      # tweet emotions over time
+      output$emoTime <- renderPlot({
+        
+        emoPlot <- tweetEmotions %>%
+          filter(!sentiment %in% c("positive", "negative")) %>%
+          ggplot(aes(x = as.Date(day_created), y = n, color = sentiment, group = sentiment)) +
+          geom_line(size = 1) +
+          geom_point(size = 3) +
+          scale_color_manual(values = emoColors,
+                             labels = c("Anger",
+                                        "Anticipation",
+                                        "Disgust",
+                                        "Fear",
+                                        "Joy",
+                                        "Sadness",
+                                        "Surprise",
+                                        "Trust")) +
+          labs(x = "Date", y = "Number of words", color = "Emotion") +
+          tweetPlotTheme +
+          theme(text = element_text(size = 18))
+        
+        emoPlot
+        
+      })
+      
+      ifelse(input$city == "Bangkok" & input$tweetSet == "All",
+             tweets <- tweetSent_ban,
+             ifelse(input$city == "New Delhi" & input$tweetSet == "All",
+                    tweets <- tweetSent_del,
+                    ifelse(input$city == "Jakarta" & input$tweetSet == "All",
+                           tweets <- tweetSent_jak,
+                           ifelse(input$city == "Mumbai" & input$tweetSet == "All",
+                                  tweets <- tweetSent_mum,
+                                  ifelse(input$city == "Bangkok" & input$tweetSet == "Misinformation",
+                                         tweets <- filter(tweetSent_ban, str_detect(text, "fake|misinformation|lie|false")),
+                                         ifelse(input$city == "New Delhi" & input$tweetSet == "Misinformation",
+                                                tweets <- filter(tweetSent_del, str_detect(text, "fake|misinformation|lie|false")),
+                                                ifelse(input$city == "Jakarta" & input$tweetSet == "Misinformation",
+                                                       tweets <- filter(tweetSent_jak, str_detect(text, "fake|misinformation|lie|false")),
+                                                       ifelse(input$city == "Mumbai" & input$tweetSet == "Misinformation",
+                                                              tweets <- filter(tweetSent_mum, str_detect(text, "fake|misinformation|lie|false")),
+                                                              ifelse(input$city == "Bangkok" & input$tweetSet == "Healthcare",
+                                                                     tweets <- filter(tweetSent_ban, str_detect(text, "hospital|test")),
+                                                                     ifelse(input$city == "New Delhi" & input$tweetSet == "Healthcare",
+                                                                            tweets <- filter(tweetSent_del, str_detect(text, "hospital|test")),
+                                                                            ifelse(input$city == "Jakarta" & input$tweetSet == "Healthcare",
+                                                                                   tweets <- filter(tweetSent_jak, str_detect(text, "hospital|test")),
+                                                                                   tweets <- filter(tweetSent_mum, str_detect(text, "hospital|test")))))))))))))
+      
+      output$Tweets <-DT::renderDataTable({
+        
+        DT::datatable(select(tweets,
+                             "Date" = day_created,
+                             "User" = screen_name,
+                             "Tweet" = text,
+                             "Retweet Count" = retweet_count,
+                             "Positivity" = Sent),
+                      rownames = F,
+                      options = list(dom = "ftp", pageLength = 5,
+                                     ordering = T,
+                                     initComplete = JS(
+                                       "function(settings, json) {",
+                                       "$('th').css({'background-color': '#000', 'color': '#fff'});",
+                                       "}")))
+        
+      })
+      
+      observeEvent(input$filter,{
+        
+        ifelse(input$city == "Bangkok" & input$tweetSet == "All",
+               tweetBigrams <- read.csv("./data/tweetBigrams_bangkok.csv") %>%
+                 filter(as.Date(day_created) == input$topWord_dates) %>%
+                 top_n(input$bigram_n, wt = n),
+               ifelse(input$city == "New Delhi" & input$tweetSet == "All",
+                      tweetBigrams <- read.csv("./data/tweetBigrams_delhi.csv")%>%
+                        filter(as.Date(day_created) == input$topWord_dates) %>%
+                        top_n(input$bigram_n, wt = n),
+                      ifelse(input$city == "Jakarta" & input$tweetSet == "All",
+                             tweetBigrams <- read.csv("./data/tweetBigrams_jakarta.csv")%>%
+                               filter(as.Date(day_created) == input$topWord_dates) %>%
+                               top_n(input$bigram_n, wt = n),
+                             ifelse(input$city == "Mumbai" & input$tweetSet == "All",
+                                    tweetBigrams <- read.csv("./data/tweetBigrams_mumbai.csv")%>%
+                                      filter(as.Date(day_created) == input$topWord_dates) %>%
+                                      top_n(input$bigram_n, wt = n),
+                                    ifelse(input$city == "Bangkok" & input$tweetSet == "Misinformation",
+                                           tweetBigrams <- read.csv("./data/misinformation_Bigrams_bangkok.csv") %>%
+                                             filter(as.Date(day_created) == input$topWord_dates) %>%
+                                             top_n(input$bigram_n, wt = n),
+                                           ifelse(input$city == "New Delhi" & input$tweetSet == "Misinformation",
+                                                  tweetBigrams <- read.csv("./data/misinformation_Bigrams_delhi.csv") %>%
+                                                    filter(as.Date(day_created) == input$topWord_dates) %>%
+                                                    top_n(input$bigram_n, wt = n),
+                                                  ifelse(input$city == "Jakarta" & input$tweetSet == "Misinformation",
+                                                         tweetBigrams <- read.csv("./data/misinformation_Bigrams_jakarta.csv") %>%
+                                                           filter(as.Date(day_created) == input$topWord_dates) %>%
+                                                           top_n(input$bigram_n, wt = n),
+                                                         ifelse(input$city == "Mumbai" & input$tweetSet == "Misinformation",
+                                                                tweetBigrams <- read.csv("./data/misinformation_Bigrams_mumbai.csv") %>%
+                                                                  filter(as.Date(day_created) == input$topWord_dates) %>%
+                                                                  top_n(input$bigram_n, wt = n),
+                                                                ifelse(input$city == "Bangkok" & input$tweetSet == "Healthcare",
+                                                                       tweetBigrams <- read.csv("./data/healthcare_Bigrams_bangkok.csv") %>%
+                                                                         filter(as.Date(day_created) == input$topWord_dates) %>%
+                                                                         top_n(input$bigram_n, wt = n),
+                                                                       ifelse(input$city == "New Delhi" & input$tweetSet == "Healthcare",
+                                                                              tweetBigrams <- read.csv("./data/healthcare_Bigrams_delhi.csv")%>%
+                                                                                filter(as.Date(day_created) == input$topWord_dates) %>%
+                                                                                top_n(input$bigram_n, wt = n),
+                                                                              ifelse(input$city == "Jakarta" & input$tweetSet == "Healthcare",
+                                                                                     tweetBigrams <- read.csv("./data/healthcare_Bigrams_jakarta.csv")%>%
+                                                                                       filter(as.Date(day_created) == input$topWord_dates) %>%
+                                                                                       top_n(input$bigram_n, wt = n),
+                                                                                     tweetBigrams <- read.csv("./data/healthcare_Bigrams_mumbai.csv")%>%
+                                                                                       filter(as.Date(day_created) == input$topWord_dates) %>%
+                                                                                       top_n(input$bigram_n, wt = n))))))))))))
+        
+        # Top Bigrams
+      output$bigrams <- renderPlot({
+        
+        tweetBigramsPlot <- tweetBigrams %>%
+          ggplot(aes(x = reorder(pairs, n), y = n)) +
+          geom_bar(stat = "identity") +
+          coord_flip() +
+          labs(x = "", y = "Frequency", title = "Most Frequent Pairs") +
+          tweetPlotTheme
+        
+        tweetBigramsPlot
+        
+      })
+        
+      })
+  
+    })
+    
+    # Select Data for Predictability indicators
+    ifelse(input$city == "Bangkok",
+           predictors <-gaps_bang,
+           ifelse(input$city == "New Delhi",
+                  predictors <- gaps_delhi,
+                  ifelse(input$city == "Jakarta",
+                         predictors <- gaps_jak,
+                         predictors <- gaps_mum)))
+    
+    # Present correlation and time series values
+    output$case_predictors <- DT::renderDataTable(datatable(select(predictors, "Week" = week_no, 
+                                                                   "Risk" = case_risk, 
+                                                                   "Gap" = gap_case, 
+                                                                   "Divergence" = case_pred,
+                                                                   "Correlation" = cc_stm_case),rownames = F,
+                                                            options = list(dom = "t", ordering = F, 
+                                                                           initComplete = JS(
+                                                                             "function(settings, json) {",
+                                                                             "$('th').css({'background-color': '#000', 'color': '#fff'});",
+                                                                             "}" )))%>%
+                                                    formatPercentage(c("Risk", "Gap"), 2))
+    
+    output$hosp_predictors <- DT::renderDataTable(datatable(select(predictors, "Week" = week_no, 
+                                                                   "Risk" = hosp_risk, 
+                                                                   "Gap" = gap_hosp, 
+                                                                   "Divergence" = hosp_pred,
+                                                                   "Correlation" = cc_stm_hosp),rownames = F,
+                                                            options = list(dom = "t", ordering = F, 
+                                                                           initComplete = JS(
+                                                                             "function(settings, json) {",
+                                                                             "$('th').css({'background-color': '#000', 'color': '#fff'});",
+                                                                             "}" ))) %>%
+                                                    formatPercentage(c("Risk", "Gap"), 2))
+    
+    # Top tweets and tweeters
+    # ifelse(input$city == "New Delhi",
+    #        tweets <- select(tweetSent_del,
+    #                         "User" = screen_name,
+    #                         "Date" = day_created, 
+    #                         "Tweet" = text, 
+    #                         "Positivity" = Sent,
+    #                         "Retweet Count" = retweet_count),
+    #        ifelse(input$city == "Mumbai",
+    #               tweets <- select(tweetSent_mum,
+    #                                "User" = screen_name, 
+    #                                "Date" = day_created, 
+    #                                "Tweet" = text, 
+    #                                "Positivity" = Sent,
+    #                                "Retweet Count" = retweet_count),
     #               ifelse(input$city == "Jakarta",
-    #                      tweetBigrams <- tweetBigrams_Jak,
-    #                      tweetBigrams <- tweetBigrams_Mum)
-    #               )
-    # )
+    #                      tweets <- select(tweetSent_jak,
+    #                                       "User" = screen_name, 
+    #                                       "Date" = day_created, 
+    #                                       "Tweet" = text, 
+    #                                       "Positivity" = Sent,
+    #                                       "Retweet Count" = retweet_count),
+    #                      tweets <- select(tweetSent_ban,
+    #                                       "User" = screen_name, 
+    #                                       "Date" = day_created, 
+    #                                       "Tweet" = text, 
+    #                                       "Positivity" = Sent,
+    #                                       "Retweet Count" = retweet_count))))
+    
+    # ifelse(input$city == "Bangkok",
+    #        misinformation_tweet_emotions <- misinformation_tweet_emotions_ban,
+    #        ifelse(input$city == "New Delhi",
+    #               misinformation_tweet_emotions <- misinformation_tweet_emotions_del,
+    #               ifelse(input$city == "Jakarta",
+    #                      misinformation_tweet_emotions <- misinformation_tweet_emotions_jak,
+    #                      misinformation_tweet_emotions <- misinformation_tweet_emotions_mum)))
+    
+    
+    
+    # output$misinformingTweets <- DT::renderDataTable({
     # 
-    # Top Bigrams
-    # output$top_bigrams <- renderPlot({
+    #   datatable(filter(tweets, str_detect(Tweet, "fake|misinformation|lie|false")),rownames = F,
+    #             options = list(dom = "ftp",
+    #                            ordering = T,
+    #                            initComplete = JS(
+    #                              "function(settings, json) {",
+    #                              "$('th').css({'background-color': '#000', 'color': '#fff'});",
+    #                              "}")))
     # 
-    #   tweetBigramsPlot <- tweetBigrams %>%
+    # }, server = T)
+
+    
+    # output$misinforming_bigrams <- renderPlot({
+    #   
+    #   misinfoBigramsPlot <- misinformation_Bigrams %>%
     #     ggplot(aes(x = reorder(pairs, n), y = n)) +
     #     geom_bar(stat = "identity") +
     #     coord_flip() +
     #     labs(x = "", y = "Frequency", title = "Most Frequent Pairs") +
     #     tweetPlotTheme
-    # 
-    #   tweetBigramsPlot
-    # 
+    #   
+    #   misinfoBigramsPlot
+    #   
     # })
-    
-    # Top tweets and tweeters
-    # misinform <- topTweets %>%
-    #   filter(as.Date(day_created) >= input$dates[1], 
-    #          as.Date(day_created) <= input$dates[2]) %>%
-    #   select("Date" = day_created,"User" = screen_name, 
-    #          "Tweet" = text, "Retweet Count" = retweet_count) 
-    
-    # output$topTweets <- DT::renderDataTable({
-    #   
-    #   datatable(misinform, 
-    #             options = list(dom = "ftp",
-    #                            ordering = F,
-    #                            initComplete = JS(
-    #                              "function(settings, json) {",
-    #                              "$('th').css({'background-color': '#000', 'color': '#fff'});",
-    #                              "}"))) 
-    #   
-    # }, server = T)
-    
+
     # output$misinform_selected <- DT::renderDataTable({
     # 
-    #   datatable(select(misinform[c(input$topTweets_rows_selected),], Tweet),
+    #   datatable(select(tweets[c(input$topTweets_rows_selected),], Tweet),rownames = F,
     #             options = list(dom = "tp", ordering = F))
-    #   
+    # 
     # })
-    
+    # 
     # observeEvent(input$email,{
     # 
     #   select(misinform[c(input$topTweets_rows_selected),], Tweet) %>%
@@ -401,92 +700,40 @@ server <- function(input, output, session) {
     # 
     # })
     
-    # Top Emotions
+    # Healthcare Satisfaction
     # ifelse(input$city == "Bangkok",
-    #        tweetEmotions <- tweetEmo_Bang,
+    #        healthcare_tweet_emotions <- healthcare_tweet_emotions_ban,
     #        ifelse(input$city == "New Delhi",
-    #               tweetEmotions <- tweetEmo_Del,
+    #               healthcare_tweet_emotions <- healthcare_tweet_emotions_del,
     #               ifelse(input$city == "Jakarta",
-    #                      tweetEmotions <- tweetEmo_Jak,
-    #                      tweetEmotions <- tweetEmo_Mum)
-    #        )
-    # )
+    #                      healthcare_tweet_emotions <- healthcare_tweet_emotions_jak,
+    #                      healthcare_tweet_emotions <- healthcare_tweet_emotions_mum)))
     
-    # output$top_emotions <- renderPlot({
+    
+    
+    # output$healthcareTweets <-DT::renderDataTable({
     #   
-    #   ggwordcloud(words = tweetEmotions$sentiment, freq = tweetEmotions$n) +
-    #     labs(title = "Emotion of Most Retweeted Tweets") +
-    #     tweetPlotTheme
+    #   DT::datatable(filter(tweets, str_detect(Tweet, "hospital|test")),rownames = F,
+    #                 options = list(dom = "ftp",
+    #                                ordering = T,
+    #                                initComplete = JS(
+    #                                  "function(settings, json) {",
+    #                                  "$('th').css({'background-color': '#000', 'color': '#fff'});",
+    #                                  "}")))
     #   
     # })
-    # # 
-    # Generate cases data
-    ifelse(input$city == "Bangkok",
-           covidCases <- epi_data_bang,
-           ifelse(input$city == "New Delhi",
-                  covidCases <- epi_data_delhi,
-                  ifelse(input$city == "Jakarta",
-                         covidCases <- epi_data_jakarta,
-                         covidCases <- epi_data_mumbai))
-    )
-    # 
-    # Cases
-    output$caseTime <- renderPlot({
-
-      cases_plot <- covidCases %>%
-        ggplot(aes(x = as.Date(recordDate), y = daily_case, group  = 1)) +
-        geom_point() +
-        geom_line() +
-        labs(x = "", y = "New Cases") +
-        tweetPlotTheme
-
-      cases_plot
-
-    })
-
-    # Hospitalization
-    output$hospTime <- renderPlot({
-
-      hosp_plot <- covidCases  %>%
-        ggplot(aes(x = as.Date(recordDate), y = hospital, group = 1)) +
-        geom_point() +
-        geom_line() +
-        labs(x = "", y = "Hospitalizations") +
-        tweetPlotTheme
-
-      hosp_plot
-
-    })
-    # 
-    
-    
-    # # present correlation and time series values
-    # output$vals <- renderTable(select(assocVals_Del, -X))
-    # 
-    # tweet emotions over time
-    # output$emoTime <- renderPlot({
-    # 
-    #   emoPlot <- tweetEmotions_del %>%
-    #     filter(!sentiment %in% c("positive", "negative")) %>%
-    #     ggplot(aes(x = as.Date(day_created), y = n, color = sentiment, group = sentiment)) +
-    #     geom_line(size = 1) +
-    #     geom_point(size = 3) +
-    #     scale_color_manual(values = emoColors,
-    #                        labels = c("Anger",
-    #                                   "Anticipation",
-    #                                   "Disgust",
-    #                                   "Fear",
-    #                                   "Joy",
-    #                                   "Sadness",
-    #                                   "Surprise",
-    #                                   "Trust")) +
-    #     labs(x = "Date", y = "Number of words", color = "Emotion") +
+    # output$healthcare_bigrams <- renderPlot({
+    #   
+    #   healthBigramsPlot <- healthcare_Bigrams %>%
+    #     ggplot(aes(x = reorder(pairs, n), y = n)) +
+    #     geom_bar(stat = "identity") +
+    #     coord_flip() +
+    #     labs(x = "", y = "Frequency", title = "Most Frequent Pairs") +
     #     tweetPlotTheme
-    # 
-    #   emoPlot
-    # 
+    #   
+    #   healthBigramsPlot
+    #   
     # })
-    
     })
 
 }
